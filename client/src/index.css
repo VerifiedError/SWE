@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile optimizations */
+@layer base {
+  /* Improve touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better scrolling on iOS */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent zoom on input focus */
+  @media screen and (max-width: 767px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+  
+  /* Mobile-first responsive chat bubbles */
+  .chat-bubble {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: calc(100vw - 120px);
+  }
+  
+  @media (min-width: 1024px) {
+    .chat-bubble {
+      max-width: 24rem;
+    }
+  }
+}
+
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 25% 7.8431%);

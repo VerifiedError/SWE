@@ -83,13 +83,13 @@ export function TaskList({ tasks, onOpenTask, onReviewPlan, onPauseTask }: TaskL
         {tasks.map((task) => (
           <div 
             key={task.id} 
-            className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+            className="p-4 lg:p-6 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 border-transparent hover:border-blue-500"
             onClick={() => onOpenTask(task.id)}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-sm font-semibold text-gray-900">{task.title}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
+                  <h3 className="text-sm lg:text-base font-semibold text-gray-900 mb-2 sm:mb-0">{task.title}</h3>
                   {getStatusBadge(task.status)}
                 </div>
                 
@@ -98,7 +98,7 @@ export function TaskList({ tasks, onOpenTask, onReviewPlan, onPauseTask }: TaskL
                 )}
                 
                 {/* Agent Status */}
-                <div className="flex items-center space-x-4 text-xs mb-3">
+                <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs mb-3">
                   <div className="flex items-center space-x-1">
                     <div className={`w-2 h-2 rounded-full ${getAgentStatusDot(task.agentStates.manager)}`}></div>
                     <span className="text-gray-600">{getAgentStatusLabel('Manager', task.agentStates.manager)}</span>
@@ -123,7 +123,7 @@ export function TaskList({ tasks, onOpenTask, onReviewPlan, onPauseTask }: TaskL
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2 ml-4">
+              <div className="flex items-center space-x-2 mt-3 sm:mt-0 sm:ml-4">
                 {task.status === 'review_required' && (
                   <Button
                     size="sm"
@@ -136,16 +136,22 @@ export function TaskList({ tasks, onOpenTask, onReviewPlan, onPauseTask }: TaskL
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onOpenTask(task.id)}
-                  className="text-gray-400 hover:text-blue-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenTask(task.id);
+                  }}
+                  className="text-gray-400 hover:text-blue-600 touch-target"
                 >
                   <i className="fas fa-external-link-alt"></i>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onPauseTask(task.id)}
-                  className="text-gray-400 hover:text-gray-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPauseTask(task.id);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 touch-target"
                 >
                   <i className="fas fa-pause"></i>
                 </Button>

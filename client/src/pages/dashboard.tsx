@@ -255,10 +255,10 @@ export default function Dashboard() {
         </header>
 
         {/* Dashboard Content */}
-        <div className="flex-1 overflow-auto p-4 lg:p-6">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Left Column: Stats & Tasks */}
-            <div className="xl:col-span-2 space-y-4 lg:space-y-6">
+            <div className="lg:col-span-2 space-y-4 lg:space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                 <Card>
@@ -326,7 +326,7 @@ export default function Dashboard() {
             </div>
 
             {/* Right Column: Chat & Activities */}
-            <div className="space-y-6">
+            <div className="space-y-4 lg:space-y-6">
               {/* Chat Interface */}
               <ChatInterface
                 taskId={selectedTaskId}
@@ -336,7 +336,7 @@ export default function Dashboard() {
               />
 
               {/* Recent Activity */}
-              <Card>
+              <Card className="hidden lg:block">
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
                 </CardHeader>
