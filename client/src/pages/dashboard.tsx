@@ -23,8 +23,8 @@ const createTaskSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).default("medium"),
 });
 
-// Demo user ID - in a real app, this would come from authentication
-const DEMO_USER_ID = "demo-user";
+// Demo user - in a real app, this would come from authentication
+const DEMO_USER = { id: "demo-user", username: "demo" };
 
 export default function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>();
@@ -40,14 +40,23 @@ export default function Dashboard() {
     },
   });
 
+  // Get the demo user and fetch data dynamically
+  const { data: user } = useQuery({
+    queryKey: ['/api/user', DEMO_USER.username],
+  });
+
+  const userId = user?.id || DEMO_USER.id;
+
   // Fetch user statistics
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
-    queryKey: ['/api/stats/user', DEMO_USER_ID],
+    queryKey: ['/api/stats/user', userId],
+    enabled: !!userId,
   });
 
   // Fetch active tasks
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<TaskWithProgress[]>({
-    queryKey: ['/api/tasks/active/user', DEMO_USER_ID],
+    queryKey: ['/api/tasks/active/user', userId],
+    enabled: !!userId,
   });
 
   // Fetch messages for selected task
@@ -58,7 +67,8 @@ export default function Dashboard() {
 
   // Fetch recent activities
   const { data: activities = [] } = useQuery<Activity[]>({
-    queryKey: ['/api/activities/user', DEMO_USER_ID],
+    queryKey: ['/api/activities/user', userId],
+    enabled: !!userId,
   });
 
   // WebSocket for real-time updates
@@ -68,28 +78,28 @@ export default function Dashboard() {
   useEffect(() => {
     if (lastMessage) {
       if (lastMessage.type === 'task_updated') {
-        queryClient.invalidateQueries({ queryKey: ['/api/tasks/active/user', DEMO_USER_ID] });
-        queryClient.invalidateQueries({ queryKey: ['/api/stats/user', DEMO_USER_ID] });
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks/active/user', userId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/stats/user', userId] });
       }
       if (lastMessage.type === 'new_messages') {
         queryClient.invalidateQueries({ queryKey: ['/api/messages/task', selectedTaskId] });
       }
     }
-  }, [lastMessage, queryClient, selectedTaskId]);
+  }, [lastMessage, queryClient, selectedTaskId, userId]);
 
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: z.infer<typeof createTaskSchema>) => {
       return apiRequest('POST', '/api/tasks', {
         ...data,
-        userId: DEMO_USER_ID,
+        userId: userId,
         status: 'pending',
         progress: 0,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks/active/user', DEMO_USER_ID] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats/user', DEMO_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/active/user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats/user', userId] });
       setShowCreateTask(false);
       form.reset();
     },
