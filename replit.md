@@ -2,11 +2,13 @@
 
 ## Overview
 
-Open SWE is an AI-powered coding agent application designed to automate software development tasks through intelligent collaboration between multiple AI agents. The system features a multi-agent architecture where specialized AI agents (Manager, Planner, Programmer) work together to analyze, plan, and execute coding tasks. Built with a modern full-stack architecture, it provides real-time collaboration through WebSocket connections and integrates with GitHub for repository management and issue tracking.
+Open SWE is a comprehensive React application featuring an AI-powered coding agent with multi-agent architecture for autonomous software development tasks. The system provides a modern, mobile-responsive interface where users can create tasks, interact with AI agents in real-time, and monitor progress through an intuitive dashboard. Built as a full-stack React application with TypeScript, it demonstrates best practices for modern web development while showcasing advanced AI integration capabilities.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Project Type: React application with full-stack capabilities and AI integration.
+Focus: Clean, production-ready code with mobile-responsive design.
 
 ## System Architecture
 
