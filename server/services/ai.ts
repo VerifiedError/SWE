@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { SWEAgent, TaskType, type SolutionPlan, type CodeChange } from './swe-agent.js';
 
 /*
 <important_code_snippet_instructions>
@@ -15,6 +16,9 @@ const DEFAULT_MODEL_STR = "claude-sonnet-4-20250514";
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || "default_key",
 });
+
+// Initialize SWE Agent
+const sweAgent = new SWEAgent();
 
 export interface PlanStep {
   step: number;
@@ -45,6 +49,102 @@ export interface CodeImplementation {
 }
 
 export class AIService {
+  
+  // Enhanced SWE Agent methods
+  async analyzeSoftwareIssue(issueDescription: string, codeContext?: string): Promise<SolutionPlan> {
+    try {
+      return await sweAgent.analyzeIssue(issueDescription, codeContext);
+    } catch (error: any) {
+      console.error('SWE Agent analysis failed:', error);
+      // Fallback to basic analysis
+      return this.fallbackIssueAnalysis(issueDescription);
+    }
+  }
+
+  async implementSolution(plan: SolutionPlan, codeContext?: string): Promise<CodeChange[]> {
+    try {
+      return await sweAgent.implementSolution(plan, codeContext);
+    } catch (error: any) {
+      console.error('SWE Agent implementation failed:', error);
+      return [];
+    }
+  }
+
+  async generateTestCases(plan: SolutionPlan, codeChanges: CodeChange[]): Promise<string[]> {
+    try {
+      return await sweAgent.generateTests(plan, codeChanges);
+    } catch (error: any) {
+      console.error('SWE Agent test generation failed:', error);
+      return [];
+    }
+  }
+
+  async validateSolution(originalIssue: string, plan: SolutionPlan, codeChanges: CodeChange[]): Promise<{
+    isValid: boolean;
+    feedback: string;
+    score: number;
+  }> {
+    try {
+      return await sweAgent.validateSolution(originalIssue, plan, codeChanges);
+    } catch (error: any) {
+      console.error('SWE Agent validation failed:', error);
+      return { isValid: false, feedback: 'Validation failed', score: 0 };
+    }
+  }
+
+  async analyzeCodeQuality(code: string, language: string): Promise<{
+    issues: Array<{ type: string; description: string; line?: number; severity: 'low' | 'medium' | 'high' }>;
+    suggestions: string[];
+    complexity: number;
+  }> {
+    try {
+      return await sweAgent.analyzeCode(code, language);
+    } catch (error: any) {
+      console.error('SWE Agent code analysis failed:', error);
+      return { issues: [], suggestions: [], complexity: 5 };
+    }
+  }
+
+  private async fallbackIssueAnalysis(issueDescription: string): Promise<SolutionPlan> {
+    const prompt = `Analyze this software issue and create a solution plan:
+
+Issue: ${issueDescription}
+
+Return as JSON:
+{
+  "taskType": "bug_fix",
+  "rootCause": "analysis of the problem",
+  "changes": [{"file": "path", "type": "modify", "description": "what to change", "location": "where"}],
+  "tests": [{"name": "test_name", "description": "what to test"}],
+  "validationSteps": ["step1", "step2"]
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]) as SolutionPlan;
+        }
+      }
+    } catch (error) {
+      console.error('Fallback analysis failed:', error);
+    }
+
+    return {
+      taskType: TaskType.BUG_FIX,
+      rootCause: "Issue analysis in progress",
+      changes: [],
+      tests: [],
+      validationSteps: ["Review implementation", "Test functionality"]
+    };
+  }
   
   // Manager Agent - Entry point and orchestration
   async managerAnalyzeTask(taskDescription: string, repositoryContext?: string): Promise<{

@@ -13,6 +13,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TaskList } from "@/components/task-list";
 import { ChatInterface } from "@/components/chat-interface";
 import { PlanReviewModal } from "@/components/plan-review-modal";
+import { SWEAgentPanel } from "@/components/swe-agent-panel";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/lib/websocket";
 import type { TaskWithProgress, ChatMessage, Activity, Stats } from "@/types";
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showPlanReview, setShowPlanReview] = useState(false);
   const [selectedPlanTask, setSelectedPlanTask] = useState<TaskWithProgress | null>(null);
+  const [activeTab, setActiveTab] = useState<'tasks' | 'swe-agent'>('tasks');
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof createTaskSchema>>({
@@ -194,6 +196,28 @@ export default function Dashboard() {
               <p className="text-xs lg:text-sm text-gray-500 mt-1">Manage your AI coding tasks and workflows</p>
             </div>
             <div className="flex items-center space-x-2 lg:space-x-4">
+              {/* Tab Navigation */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <Button
+                  variant={activeTab === 'tasks' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('tasks')}
+                  className="px-3 text-xs"
+                >
+                  <i className="fas fa-tasks mr-2"></i>
+                  Tasks
+                </Button>
+                <Button
+                  variant={activeTab === 'swe-agent' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('swe-agent')}
+                  className="px-3 text-xs"
+                >
+                  <i className="fas fa-robot mr-2"></i>
+                  SWE Agent
+                </Button>
+              </div>
+
               <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
                 <DialogTrigger asChild>
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs lg:text-sm px-2 lg:px-4">
@@ -256,9 +280,14 @@ export default function Dashboard() {
 
         {/* Dashboard Content */}
         <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-            {/* Left Column: Stats & Tasks */}
-            <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+          {activeTab === 'swe-agent' ? (
+            <div className="max-w-6xl mx-auto">
+              <SWEAgentPanel />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+              {/* Left Column: Stats & Tasks */}
+              <div className="lg:col-span-2 space-y-4 lg:space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                 <Card>
@@ -382,6 +411,7 @@ export default function Dashboard() {
               </Card>
             </div>
           </div>
+          )}
         </div>
       </main>
 

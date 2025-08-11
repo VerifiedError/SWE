@@ -1,0 +1,864 @@
+# File Name: agent/swe_agent.py
+
+# Last Updated: 2025-01-27 | Time: 10:30 AM CST
+
+# Total Lines: 850
+
+# Version: 1.0
+
+“””
+Software Engineering Agent - Autonomous code analysis, generation, and issue resolution
+Inspired by Open-SWE for solving GitHub issues and software engineering tasks
+“””
+
+import os
+import re
+import ast
+import json
+import logging
+import subprocess
+import difflib
+from typing import Dict, List, Any, Optional, Tuple
+from pathlib import Path
+from datetime import datetime
+import git
+import github
+from github import Github
+import requests
+import tempfile
+import shutil
+from dataclasses import dataclass
+from enum import Enum
+
+logger = logging.getLogger(**name**)
+
+class TaskType(Enum):
+“”“Types of software engineering tasks”””
+BUG_FIX = “bug_fix”
+FEATURE_ADD = “feature_add”
+REFACTOR = “refactor”
+TEST_GENERATION = “test_generation”
+DOCUMENTATION = “documentation”
+PERFORMANCE = “performance”
+SECURITY = “security”
+
+@dataclass
+class CodeContext:
+“”“Represents context for code understanding”””
+file_path: str
+content: str
+language: str
+imports: List[str]
+functions: List[Dict[str, Any]]
+classes: List[Dict[str, Any]]
+dependencies: List[str]
+test_coverage: Optional[float] = None
+complexity_score: Optional[int] = None
+
+@dataclass
+class IssueContext:
+“”“Represents a GitHub issue or task context”””
+issue_number: int
+title: str
+description: str
+labels: List[str]
+files_mentioned: List[str]
+error_traces: List[str]
+expected_behavior: str
+actual_behavior: str
+reproduction_steps: List[str]
+
+class SWEAgent:
+“””
+Autonomous Software Engineering Agent
+Capable of understanding, analyzing, and fixing code issues
+“””
+
+```
+def __init__(self, openai_client, github_token: str = None):
+    """
+    Initialize SWE Agent
+    
+    Args:
+        openai_client: OpenAI client instance
+        github_token: GitHub API token for repository access
+    """
+    self.openai_client = openai_client
+    self.github_client = Github(github_token) if github_token else None
+    self.workspace = Path("./swe_workspace")
+    self.workspace.mkdir(exist_ok=True)
+    
+    # Code analysis patterns
+    self.error_patterns = {
+        'python': {
+            'syntax': r'SyntaxError: (.+)',
+            'import': r'ImportError: (.+)|ModuleNotFoundError: (.+)',
+            'type': r'TypeError: (.+)',
+            'value': r'ValueError: (.+)',
+            'attribute': r'AttributeError: (.+)',
+            'index': r'IndexError: (.+)',
+            'key': r'KeyError: (.+)',
+            'name': r'NameError: (.+)',
+        },
+        'javascript': {
+            'syntax': r'SyntaxError: (.+)',
+            'reference': r'ReferenceError: (.+)',
+            'type': r'TypeError: (.+)',
+            'range': r'RangeError: (.+)',
+        }
+    }
+    
+    # Language detection
+    self.language_extensions = {
+        '.py': 'python',
+        '.js': 'javascript',
+        '.ts': 'typescript',
+        '.java': 'java',
+        '.cpp': 'cpp',
+        '.c': 'c',
+        '.cs': 'csharp',
+        '.go': 'go',
+        '.rs': 'rust',
+        '.rb': 'ruby',
+        '.php': 'php',
+    }
+    
+    logger.info("SWE Agent initialized")
+
+def solve_github_issue(self, repo_url: str, issue_number: int) -> Dict[str, Any]:
+    """
+    Autonomously solve a GitHub issue
+    
+    Args:
+        repo_url: GitHub repository URL
+        issue_number: Issue number to solve
+        
+    Returns:
+        Solution with code changes and explanation
+    """
+    try:
+        # Clone repository
+        repo_path = self._clone_repository(repo_url)
+        
+        # Fetch issue details
+        issue_context = self._fetch_issue_context(repo_url, issue_number)
+        
+        # Analyze codebase
+        codebase_analysis = self._analyze_codebase(repo_path)
+        
+        # Identify relevant files
+        relevant_files = self._identify_relevant_files(
+            issue_context, 
+            codebase_analysis
+        )
+        
+        # Generate solution plan
+        solution_plan = self._generate_solution_plan(
+            issue_context,
+            relevant_files
+        )
+        
+        # Implement solution
+        code_changes = self._implement_solution(
+            solution_plan,
+            relevant_files
+        )
+        
+        # Generate tests
+        tests = self._generate_tests(code_changes)
+        
+        # Validate solution
+        validation_results = self._validate_solution(
+            repo_path,
+            code_changes,
+            tests
+        )
+        
+        # Create pull request
+        if validation_results['success']:
+            pr_url = self._create_pull_request(
+                repo_url,
+                issue_number,
+                code_changes,
+                tests
+            )
+        
+        return {
+            'issue': issue_context,
+            'solution_plan': solution_plan,
+            'code_changes': code_changes,
+            'tests': tests,
+            'validation': validation_results,
+            'pull_request': pr_url if validation_results['success'] else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to solve issue: {e}")
+        raise
+
+def _clone_repository(self, repo_url: str) -> Path:
+    """Clone a GitHub repository"""
+    repo_name = repo_url.split('/')[-1].replace('.git', '')
+    repo_path = self.workspace / repo_name
+    
+    if repo_path.exists():
+        # Pull latest changes
+        repo = git.Repo(repo_path)
+        repo.remotes.origin.pull()
+    else:
+        # Clone repository
+        git.Repo.clone_from(repo_url, repo_path)
+    
+    return repo_path
+
+def _fetch_issue_context(self, repo_url: str, issue_number: int) -> IssueContext:
+    """Fetch and parse GitHub issue details"""
+    if not self.github_client:
+        raise ValueError("GitHub client not initialized")
+    
+    # Parse repo info
+    parts = repo_url.replace('https://github.com/', '').split('/')
+    owner, repo_name = parts[0], parts[1].replace('.git', '')
+    
+    # Get issue
+    repo = self.github_client.get_repo(f"{owner}/{repo_name}")
+    issue = repo.get_issue(issue_number)
+    
+    # Parse issue body for details
+    description = issue.body or ""
+    
+    # Extract error traces
+    error_traces = re.findall(r'```[\s\S]*?Error[\s\S]*?```', description)
+    
+    # Extract file mentions
+    files_mentioned = re.findall(r'[a-zA-Z0-9_/]+\.[a-zA-Z]+', description)
+    
+    # Parse reproduction steps
+    steps_match = re.search(r'(?:Steps to reproduce|Reproduction):([\s\S]*?)(?:Expected|Actual|$)', 
+                           description, re.IGNORECASE)
+    reproduction_steps = []
+    if steps_match:
+        steps_text = steps_match.group(1)
+        reproduction_steps = [s.strip() for s in re.findall(r'\d+\.\s*(.+)', steps_text)]
+    
+    # Parse expected vs actual
+    expected_match = re.search(r'(?:Expected behavior|Expected):([\s\S]*?)(?:Actual|$)', 
+                              description, re.IGNORECASE)
+    expected = expected_match.group(1).strip() if expected_match else ""
+    
+    actual_match = re.search(r'(?:Actual behavior|Actual|Current):([\s\S]*?)(?:Expected|$)', 
+                            description, re.IGNORECASE)
+    actual = actual_match.group(1).strip() if actual_match else ""
+    
+    return IssueContext(
+        issue_number=issue_number,
+        title=issue.title,
+        description=description,
+        labels=[l.name for l in issue.labels],
+        files_mentioned=files_mentioned,
+        error_traces=error_traces,
+        expected_behavior=expected,
+        actual_behavior=actual,
+        reproduction_steps=reproduction_steps
+    )
+
+def _analyze_codebase(self, repo_path: Path) -> Dict[str, CodeContext]:
+    """Analyze entire codebase structure"""
+    codebase = {}
+    
+    for file_path in repo_path.rglob('*'):
+        if file_path.is_file() and file_path.suffix in self.language_extensions:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                language = self.language_extensions[file_path.suffix]
+                relative_path = str(file_path.relative_to(repo_path))
+                
+                context = CodeContext(
+                    file_path=relative_path,
+                    content=content,
+                    language=language,
+                    imports=self._extract_imports(content, language),
+                    functions=self._extract_functions(content, language),
+                    classes=self._extract_classes(content, language),
+                    dependencies=self._extract_dependencies(content, language)
+                )
+                
+                codebase[relative_path] = context
+                
+            except Exception as e:
+                logger.warning(f"Failed to analyze {file_path}: {e}")
+    
+    return codebase
+
+def _identify_relevant_files(self, 
+                             issue: IssueContext, 
+                             codebase: Dict[str, CodeContext]) -> List[CodeContext]:
+    """Identify files relevant to the issue"""
+    relevant_files = []
+    
+    # Check mentioned files
+    for file_mentioned in issue.files_mentioned:
+        for file_path, context in codebase.items():
+            if file_mentioned in file_path:
+                relevant_files.append(context)
+    
+    # Search for error-related files
+    if issue.error_traces:
+        for trace in issue.error_traces:
+            for file_path, context in codebase.items():
+                if file_path in trace:
+                    if context not in relevant_files:
+                        relevant_files.append(context)
+    
+    # Use AI to identify additional relevant files
+    if len(relevant_files) < 3:
+        prompt = f"""
+        Given this issue:
+        Title: {issue.title}
+        Description: {issue.description[:500]}
+        
+        And these files in the codebase:
+        {list(codebase.keys())[:50]}
+        
+        Which files are most likely relevant to solving this issue?
+        Return a JSON list of file paths.
+        """
+        
+        response = self.openai_client.complete(prompt)
+        try:
+            suggested_files = json.loads(response)
+            for file_path in suggested_files:
+                if file_path in codebase and codebase[file_path] not in relevant_files:
+                    relevant_files.append(codebase[file_path])
+        except:
+            pass
+    
+    return relevant_files[:10]  # Limit to 10 most relevant files
+
+def _generate_solution_plan(self, 
+                            issue: IssueContext,
+                            relevant_files: List[CodeContext]) -> Dict[str, Any]:
+    """Generate a detailed plan to solve the issue"""
+    
+    # Prepare context for AI
+    files_context = ""
+    for file in relevant_files[:5]:  # Limit context size
+        files_context += f"\nFile: {file.file_path}\n"
+        files_context += f"Functions: {[f['name'] for f in file.functions]}\n"
+        files_context += f"Classes: {[c['name'] for c in file.classes]}\n"
+        files_context += f"First 500 chars:\n{file.content[:500]}\n"
+    
+    prompt = f"""
+    You are an expert software engineer. Create a detailed solution plan for this issue:
+    
+    Issue #{issue.issue_number}: {issue.title}
+    Description: {issue.description}
+    
+    Error traces:
+    {issue.error_traces[:2] if issue.error_traces else 'None'}
+    
+    Expected behavior: {issue.expected_behavior}
+    Actual behavior: {issue.actual_behavior}
+    
+    Relevant files context:
+    {files_context}
+    
+    Create a solution plan with:
+    1. Root cause analysis
+    2. Specific changes needed (file, line numbers if possible)
+    3. Implementation approach
+    4. Test cases to add
+    
+    Return as JSON with structure:
+    {{
+        "task_type": "bug_fix|feature_add|refactor",
+        "root_cause": "description",
+        "changes": [
+            {{
+                "file": "path/to/file",
+                "type": "modify|add|delete",
+                "description": "what to change",
+                "location": "function/class name or line range"
+            }}
+        ],
+        "tests": [
+            {{
+                "name": "test_name",
+                "description": "what to test"
+            }}
+        ],
+        "validation_steps": ["step1", "step2"]
+    }}
+    """
+    
+    response = self.openai_client.complete(
+        prompt,
+        max_tokens=2000,
+        temperature=0.3
+    )
+    
+    try:
+        plan = json.loads(response)
+    except:
+        # Fallback plan
+        plan = {
+            "task_type": "bug_fix",
+            "root_cause": "Unable to parse specific cause",
+            "changes": [],
+            "tests": [],
+            "validation_steps": []
+        }
+    
+    return plan
+
+def _implement_solution(self,
+                       solution_plan: Dict[str, Any],
+                       relevant_files: List[CodeContext]) -> List[Dict[str, Any]]:
+    """Implement the solution based on the plan"""
+    code_changes = []
+    
+    for change in solution_plan.get('changes', []):
+        file_path = change['file']
+        change_type = change['type']
+        
+        # Find the file context
+        file_context = None
+        for context in relevant_files:
+            if context.file_path == file_path:
+                file_context = context
+                break
+        
+        if not file_context and change_type != 'add':
+            logger.warning(f"File not found in context: {file_path}")
+            continue
+        
+        if change_type == 'modify':
+            modified_content = self._modify_file(
+                file_context,
+                change['description'],
+                change.get('location')
+            )
+            
+            code_changes.append({
+                'file': file_path,
+                'type': 'modify',
+                'original': file_context.content,
+                'modified': modified_content,
+                'diff': self._generate_diff(file_context.content, modified_content)
+            })
+            
+        elif change_type == 'add':
+            new_content = self._generate_new_file(
+                file_path,
+                change['description'],
+                solution_plan.get('task_type')
+            )
+            
+            code_changes.append({
+                'file': file_path,
+                'type': 'add',
+                'content': new_content
+            })
+            
+        elif change_type == 'delete':
+            code_changes.append({
+                'file': file_path,
+                'type': 'delete'
+            })
+    
+    return code_changes
+
+def _modify_file(self, 
+                file_context: CodeContext,
+                change_description: str,
+                location: str = None) -> str:
+    """Modify a file based on the change description"""
+    
+    prompt = f"""
+    Modify this {file_context.language} file to: {change_description}
+    
+    {"Focus on: " + location if location else ""}
+    
+    Original file content:
+    ```{file_context.language}
+    {file_context.content}
+    ```
+    
+    Return ONLY the complete modified file content, no explanations.
+    """
+    
+    modified_content = self.openai_client.complete(
+        prompt,
+        max_tokens=4000,
+        temperature=0.2
+    )
+    
+    # Clean up response
+    modified_content = re.sub(r'^```[a-z]*\n', '', modified_content)
+    modified_content = re.sub(r'\n```$', '', modified_content)
+    
+    return modified_content
+
+def _generate_new_file(self,
+                      file_path: str,
+                      description: str,
+                      task_type: str) -> str:
+    """Generate a new file based on description"""
+    
+    # Determine language from extension
+    ext = Path(file_path).suffix
+    language = self.language_extensions.get(ext, 'python')
+    
+    prompt = f"""
+    Create a new {language} file: {file_path}
+    Purpose: {description}
+    Task type: {task_type}
+    
+    Generate complete, production-ready code with:
+    - Proper imports
+    - Documentation
+    - Error handling
+    - Following best practices
+    
+    Return ONLY the code, no explanations.
+    """
+    
+    content = self.openai_client.complete(
+        prompt,
+        max_tokens=3000,
+        temperature=0.3
+    )
+    
+    # Clean up
+    content = re.sub(r'^```[a-z]*\n', '', content)
+    content = re.sub(r'\n```$', '', content)
+    
+    return content
+
+def _generate_tests(self, code_changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Generate tests for the code changes"""
+    tests = []
+    
+    for change in code_changes:
+        if change['type'] in ['modify', 'add']:
+            file_path = change['file']
+            content = change.get('modified', change.get('content', ''))
+            
+            if not content:
+                continue
+            
+            # Determine test framework based on language
+            ext = Path(file_path).suffix
+            language = self.language_extensions.get(ext, 'python')
+            
+            test_file = self._generate_test_file(
+                file_path,
+                content,
+                language
+            )
+            
+            if test_file:
+                tests.append({
+                    'file': test_file['path'],
+                    'content': test_file['content'],
+                    'type': 'unit_test',
+                    'target': file_path
+                })
+    
+    return tests
+
+def _generate_test_file(self,
+                       target_file: str,
+                       content: str,
+                       language: str) -> Optional[Dict[str, str]]:
+    """Generate test file for a specific file"""
+    
+    test_frameworks = {
+        'python': 'pytest',
+        'javascript': 'jest',
+        'typescript': 'jest',
+        'java': 'junit',
+        'go': 'testing',
+        'rust': 'cargo test'
+    }
+    
+    framework = test_frameworks.get(language, 'generic')
+    
+    prompt = f"""
+    Generate comprehensive unit tests for this {language} code using {framework}:
+    
+    File: {target_file}
+    ```{language}
+    {content[:2000]}
+    ```
+    
+    Create tests that:
+    1. Cover all functions/methods
+    2. Test edge cases
+    3. Test error handling
+    4. Include both positive and negative test cases
+    
+    Return ONLY the test code, no explanations.
+    """
+    
+    test_content = self.openai_client.complete(
+        prompt,
+        max_tokens=2000,
+        temperature=0.2
+    )
+    
+    # Clean up
+    test_content = re.sub(r'^```[a-z]*\n', '', test_content)
+    test_content = re.sub(r'\n```$', '', test_content)
+    
+    # Determine test file path
+    test_path = self._get_test_file_path(target_file, language)
+    
+    return {
+        'path': test_path,
+        'content': test_content
+    }
+
+def _get_test_file_path(self, target_file: str, language: str) -> str:
+    """Determine appropriate test file path"""
+    path = Path(target_file)
+    
+    if language == 'python':
+        return f"tests/test_{path.stem}.py"
+    elif language in ['javascript', 'typescript']:
+        return f"{path.parent}/{path.stem}.test{path.suffix}"
+    elif language == 'go':
+        return f"{path.parent}/{path.stem}_test.go"
+    else:
+        return f"tests/{path.stem}_test{path.suffix}"
+
+def _validate_solution(self,
+                      repo_path: Path,
+                      code_changes: List[Dict[str, Any]],
+                      tests: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Validate the solution by running tests and checks"""
+    
+    validation_results = {
+        'success': False,
+        'syntax_valid': True,
+        'tests_pass': False,
+        'no_regressions': True,
+        'errors': []
+    }
+    
+    # Create temporary workspace
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        
+        # Copy original repo
+        shutil.copytree(repo_path, temp_path / 'test_repo')
+        test_repo = temp_path / 'test_repo'
+        
+        # Apply changes
+        for change in code_changes:
+            file_path = test_repo / change['file']
+            
+            if change['type'] == 'modify':
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(change['modified'])
+            elif change['type'] == 'add':
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(change['content'])
+            elif change['type'] == 'delete' and file_path.exists():
+                file_path.unlink()
+        
+        # Add test files
+        for test in tests:
+            test_path = test_repo / test['file']
+            test_path.parent.mkdir(parents=True, exist_ok=True)
+            test_path.write_text(test['content'])
+        
+        # Validate syntax
+        for change in code_changes:
+            if change['type'] in ['modify', 'add']:
+                file_path = test_repo / change['file']
+                if file_path.suffix == '.py':
+                    try:
+                        with open(file_path, 'r') as f:
+                            ast.parse(f.read())
+                    except SyntaxError as e:
+                        validation_results['syntax_valid'] = False
+                        validation_results['errors'].append(f"Syntax error in {change['file']}: {e}")
+        
+        # Run tests if available
+        if tests:
+            # Try to run tests based on language
+            test_commands = {
+                '.py': ['pytest', '-v'],
+                '.js': ['npm', 'test'],
+                '.go': ['go', 'test', './...'],
+            }
+            
+            for test in tests:
+                ext = Path(test['file']).suffix
+                if ext in test_commands:
+                    try:
+                        result = subprocess.run(
+                            test_commands[ext],
+                            cwd=test_repo,
+                            capture_output=True,
+                            text=True,
+                            timeout=30
+                        )
+                        if result.returncode == 0:
+                            validation_results['tests_pass'] = True
+                        else:
+                            validation_results['errors'].append(f"Test failed: {result.stderr}")
+                    except Exception as e:
+                        validation_results['errors'].append(f"Failed to run tests: {e}")
+        
+        # Check for regressions (simplified - would need more comprehensive testing)
+        validation_results['no_regressions'] = validation_results['syntax_valid']
+        
+        # Overall success
+        validation_results['success'] = (
+            validation_results['syntax_valid'] and 
+            validation_results['no_regressions']
+        )
+    
+    return validation_results
+
+def _create_pull_request(self,
+                        repo_url: str,
+                        issue_number: int,
+                        code_changes: List[Dict[str, Any]],
+                        tests: List[Dict[str, Any]]) -> str:
+    """Create a pull request with the solution"""
+    
+    if not self.github_client:
+        return "GitHub client not initialized - PR not created"
+    
+    # This would actually create a PR - simplified for demonstration
+    pr_description = f"""
+    ## Fixes #{issue_number}
+    
+    ### Changes Made
+    {len(code_changes)} files modified
+    {len(tests)} test files added/updated
+    
+    ### Files Changed
+    {', '.join([c['file'] for c in code_changes])}
+    
+    ### Tests Added
+    {', '.join([t['file'] for t in tests])}
+    
+    ### Validation
+    - [x] Syntax validation passed
+    - [x] Tests written
+    - [x] No regressions detected
+    """
+    
+    return f"PR would be created with description:\n{pr_description}"
+
+def _generate_diff(self, original: str, modified: str) -> str:
+    """Generate a unified diff between original and modified content"""
+    original_lines = original.splitlines(keepends=True)
+    modified_lines = modified.splitlines(keepends=True)
+    
+    diff = difflib.unified_diff(
+        original_lines,
+        modified_lines,
+        fromfile='original',
+        tofile='modified',
+        lineterm=''
+    )
+    
+    return ''.join(diff)
+
+def _extract_imports(self, content: str, language: str) -> List[str]:
+    """Extract import statements from code"""
+    imports = []
+    
+    if language == 'python':
+        patterns = [
+            r'^import\s+(.+)$',
+            r'^from\s+(\S+)\s+import'
+        ]
+    elif language in ['javascript', 'typescript']:
+        patterns = [
+            r'^import\s+.+\s+from\s+[\'"](.+)[\'"]',
+            r'^const\s+.+\s+=\s+require\([\'"](.+)[\'"]\)'
+        ]
+    else:
+        return imports
+    
+    for pattern in patterns:
+        imports.extend(re.findall(pattern, content, re.MULTILINE))
+    
+    return imports
+
+def _extract_functions(self, content: str, language: str) -> List[Dict[str, Any]]:
+    """Extract function definitions from code"""
+    functions = []
+    
+    if language == 'python':
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    functions.append({
+                        'name': node.name,
+                        'line': node.lineno,
+                        'args': [arg.arg for arg in node.args.args]
+                    })
+        except:
+            pass
+    elif language in ['javascript', 'typescript']:
+        # Simple regex-based extraction
+        pattern = r'(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)\s*=>|\([^)]*\)\s*:\s*\w+\s*=>))'
+        for match in re.finditer(pattern, content):
+            name = match.group(1) or match.group(2)
+            if name:
+                functions.append({'name': name, 'line': content[:match.start()].count('\n') + 1})
+    
+    return functions
+
+def _extract_classes(self, content: str, language: str) -> List[Dict[str, Any]]:
+    """Extract class definitions from code"""
+    classes = []
+    
+    if language == 'python':
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    classes.append({
+                        'name': node.name,
+                        'line': node.lineno,
+                        'methods': [n.name for n in node.body if isinstance(n, ast.FunctionDef)]
+                    })
+        except:
+            pass
+    elif language in ['javascript', 'typescript']:
+        pattern = r'class\s+(\w+)'
+        for match in re.finditer(pattern, content):
+            classes.append({
+                'name': match.group(1),
+                'line': content[:match.start()].count('\n') + 1
+            })
+    
+    return classes
+
+def _extract_dependencies(self, content: str, language: str) -> List[str]:
+    """Extract external dependencies from code"""
+    deps = []
+    
+    if language == 'python':
+        # Look for pip packages in imports
+        imports = self._extract_imports(content, language)
+        # Filter to likely external packages
+        deps = [imp.split('.')[0] for imp in imports if not imp.startswith('.')]
+    elif language in ['javascript', 'typescript']:
+        # Look for npm packages
+        imports = self._extract_imports(content, language)
+        deps = [imp for imp in imports if not imp.startswith('.')]
+    
+    return list(set(deps))  # Remove duplicates
+```

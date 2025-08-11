@@ -1,0 +1,419 @@
+# File Name: agent/enhanced_core.py
+
+# Last Updated: 2025-01-27 | Time: 10:40 AM CST
+
+# Total Lines: 520
+
+# Version: 1.0
+
+“””
+Enhanced Agent Core - Integrates SWE capabilities with existing agent system
+Adds autonomous software engineering, GitHub integration, and advanced code analysis
+“””
+
+import os
+import json
+import logging
+import threading
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+from pathlib import Path
+import uuid
+
+from agent.core import AgentCore
+from agent.swe_agent import SWEAgent, TaskType
+from agent.tools.github_integration import GitHubIntegrationTool
+
+logger = logging.getLogger(**name**)
+
+class EnhancedAgentCore(AgentCore):
+“””
+Enhanced Agent Core with Software Engineering capabilities
+Extends the base AgentCore with SWE and GitHub integration
+“””
+
+```
+def __init__(self, socketio=None):
+    """
+    Initialize Enhanced Agent Core
+    
+    Args:
+        socketio: Flask-SocketIO instance for real-time updates
+    """
+    # Initialize base agent
+    super().__init__(socketio)
+    
+    # Initialize SWE capabilities
+    self.swe_agent = SWEAgent(self.openai_client, os.getenv('GITHUB_TOKEN'))
+    self.github_tool = GitHubIntegrationTool(os.getenv('GITHUB_TOKEN'))
+    
+    # Add new tools to registry
+    self._add_swe_tools()
+    
+    # SWE-specific task tracking
+    self.swe_tasks = {}
+    
+    logger.info("Enhanced Agent Core with SWE capabilities initialized")
+
+def _add_swe_tools(self):
+    """Add SWE and GitHub tools to the tool registry"""
+    swe_tools = {
+        # GitHub operations
+        'github_fetch_issues': self.github_tool.fetch_repository_issues,
+        'github_analyze_issue': self.github_tool.analyze_issue,
+        'github_clone_repo': self.github_tool.clone_repository,
+        'github_create_pr': self.github_tool.create_pull_request,
+        'github_search_code': self.github_tool.search_code,
+        
+        # SWE operations
+        'swe_solve_issue': self._solve_github_issue_wrapper,
+        'swe_analyze_code': self._analyze_codebase_wrapper,
+        'swe_generate_tests': self._generate_tests_wrapper,
+        'swe_refactor_code': self._refactor_code_wrapper,
+        'swe_fix_bugs': self._fix_bugs_wrapper,
+    }
+    
+    self.tools.update(swe_tools)
+    logger.info(f"Added {len(swe_tools)} SWE tools to agent")
+
+def submit_swe_task(self, 
+                    task_type: str,
+                    parameters: Dict[str, Any]) -> str:
+    """
+    Submit a software engineering task
+    
+    Args:
+        task_type: Type of SWE task (issue_fix, refactor, test_gen, etc.)
+        parameters: Task parameters
+        
+    Returns:
+        Task ID for tracking
+    """
+    task_id = str(uuid.uuid4())
+    
+    # Create SWE task
+    swe_task = {
+        'id': task_id,
+        'type': task_type,
+        'parameters': parameters,
+        'status': 'initializing',
+        'created_at': datetime.now().isoformat(),
+        'steps': [],
+        'results': None,
+        'errors': []
+    }
+    
+    self.swe_tasks[task_id] = swe_task
+    
+    # Add to regular task queue with SWE marker
+    description = self._generate_swe_description(task_type, parameters)
+    regular_task_id = self.submit_task(description, {
+        'swe_task': True,
+        'swe_task_id': task_id,
+        **parameters
+    })
+    
+    # Link tasks
+    swe_task['regular_task_id'] = regular_task_id
+    
+    # Start execution in background
+    threading.Thread(
+        target=self._execute_swe_task,
+        args=(task_id,),
+        daemon=True
+    ).start()
+    
+    return task_id
+
+def _generate_swe_description(self, task_type: str, parameters: Dict[str, Any]) -> str:
+    """Generate human-readable description for SWE task"""
+    descriptions = {
+        'github_issue': f"Solve GitHub issue #{parameters.get('issue_number')} in {parameters.get('repo_name')}",
+        'code_refactor': f"Refactor code in {parameters.get('file_path', 'project')}",
+        'test_generation': f"Generate tests for {parameters.get('target', 'codebase')}",
+        'bug_fix': f"Fix bugs in {parameters.get('file_path', 'project')}",
+        'feature_add': f"Add feature: {parameters.get('feature_description', 'new feature')}",
+        'code_review': f"Review code in {parameters.get('repo_name', 'repository')}",
+        'documentation': f"Generate documentation for {parameters.get('target', 'project')}"
+    }
+    
+    return descriptions.get(task_type, f"Execute SWE task: {task_type}")
+
+def _execute_swe_task(self, task_id: str):
+    """Execute a SWE task in the background"""
+    task = self.swe_tasks.get(task_id)
+    if not task:
+        return
+    
+    try:
+        task['status'] = 'running'
+        self._emit_swe_update(task_id, 'started', {'message': 'SWE task started'})
+        
+        # Route to appropriate handler
+        task_type = task['type']
+        parameters = task['parameters']
+        
+        if task_type == 'github_issue':
+            result = self._handle_github_issue(task_id, parameters)
+        elif task_type == 'code_refactor':
+            result = self._handle_code_refactor(task_id, parameters)
+        elif task_type == 'test_generation':
+            result = self._handle_test_generation(task_id, parameters)
+        elif task_type == 'bug_fix':
+            result = self._handle_bug_fix(task_id, parameters)
+        elif task_type == 'feature_add':
+            result = self._handle_feature_add(task_id, parameters)
+        else:
+            raise ValueError(f"Unknown SWE task type: {task_type}")
+        
+        # Update task with results
+        task['status'] = 'completed'
+        task['results'] = result
+        task['completed_at'] = datetime.now().isoformat()
+        
+        self._emit_swe_update(task_id, 'completed', {
+            'message': 'SWE task completed successfully',
+            'results': result
+        })
+        
+    except Exception as e:
+        logger.error(f"SWE task {task_id} failed: {e}")
+        task['status'] = 'failed'
+        task['errors'].append(str(e))
+        
+        self._emit_swe_update(task_id, 'failed', {
+            'message': f'SWE task failed: {str(e)}',
+            'error': str(e)
+        })
+
+def _handle_github_issue(self, task_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GitHub issue resolution task"""
+    repo_name = parameters['repo_name']
+    issue_number = parameters['issue_number']
+    
+    self._add_swe_step(task_id, 'Analyzing issue', 'analyzing')
+    
+    # Analyze the issue
+    issue_analysis = self.github_tool.analyze_issue(repo_name, issue_number)
+    
+    self._add_swe_step(task_id, 'Cloning repository', 'cloning')
+    
+    # Clone repository
+    repo_path = self.github_tool.clone_repository(repo_name)
+    
+    self._add_swe_step(task_id, 'Generating solution', 'solving')
+    
+    # Use SWE agent to solve the issue
+    solution = self.swe_agent.solve_github_issue(
+        f"https://github.com/{repo_name}",
+        issue_number
+    )
+    
+    self._add_swe_step(task_id, 'Creating pull request', 'pr_creation')
+    
+    # Create branch for fix
+    branch_name = f"fix-issue-{issue_number}"
+    self.github_tool.create_branch(repo_path, branch_name)
+    
+    # Apply changes
+    for change in solution['code_changes']:
+        file_path = repo_path / change['file']
+        if change['type'] == 'modify':
+            file_path.write_text(change['modified'])
+        elif change['type'] == 'add':
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(change['content'])
+    
+    # Commit changes
+    changed_files = [change['file'] for change in solution['code_changes']]
+    commit_message = f"Fix issue #{issue_number}: {issue_analysis['title']}"
+    self.github_tool.commit_changes(repo_path, changed_files, commit_message)
+    
+    # Push branch
+    self.github_tool.push_branch(repo_path, branch_name)
+    
+    # Create PR
+    pr_body = self._generate_pr_description(solution, issue_analysis)
+    pr = self.github_tool.create_pull_request(
+        repo_name,
+        f"Fix #{issue_number}: {issue_analysis['title']}",
+        pr_body,
+        branch_name,
+        issue_number=issue_number
+    )
+    
+    self._add_swe_step(task_id, 'Pull request created', 'completed')
+    
+    return {
+        'issue': issue_analysis,
+        'solution': solution,
+        'pull_request': pr
+    }
+
+def _handle_code_refactor(self, task_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle code refactoring task"""
+    file_path = parameters.get('file_path')
+    refactor_type = parameters.get('refactor_type', 'general')
+    
+    self._add_swe_step(task_id, 'Analyzing code structure', 'analyzing')
+    
+    # Read current code
+    with open(file_path, 'r') as f:
+        original_code = f.read()
+    
+    # Determine language
+    ext = Path(file_path).suffix
+    language = self.swe_agent.language_extensions.get(ext, 'python')
+    
+    self._add_swe_step(task_id, 'Generating refactored code', 'refactoring')
+    
+    # Generate refactoring prompt
+    prompt = f"""
+    Refactor this {language} code for {refactor_type}:
+    
+    Original code:
+    ```{language}
+    {original_code}
+    ```
+    
+    Refactoring goals:
+    1. Improve code readability and maintainability
+    2. Follow best practices and design patterns
+    3. Optimize performance where possible
+    4. Add proper documentation
+    5. Ensure backward compatibility
+    
+    Return the complete refactored code.
+    """
+    
+    refactored_code = self.openai_client.complete(prompt, max_tokens=4000)
+    
+    # Clean response
+    refactored_code = refactored_code.replace(f'```{language}', '').replace('```', '').strip()
+    
+    self._add_swe_step(task_id, 'Validating refactored code', 'validating')
+    
+    # Validate syntax
+    validation_result = self._validate_code_syntax(refactored_code, language)
+    
+    if validation_result['valid']:
+        # Save refactored code
+        backup_path = file_path + '.backup'
+        shutil.copy(file_path, backup_path)
+        
+        with open(file_path, 'w') as f:
+            f.write(refactored_code)
+        
+        self._add_swe_step(task_id, 'Refactoring completed', 'completed')
+    
+    return {
+        'original_code': original_code,
+        'refactored_code': refactored_code,
+        'validation': validation_result,
+        'improvements': self._analyze_improvements(original_code, refactored_code, language)
+    }
+
+def _handle_test_generation(self, task_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle test generation task"""
+    target = parameters.get('target')
+    test_framework = parameters.get('framework', 'pytest')
+    
+    self._add_swe_step(task_id, 'Analyzing target code', 'analyzing')
+    
+    # Read target code
+    if os.path.isfile(target):
+        with open(target, 'r') as f:
+            code = f.read()
+        files = [target]
+    else:
+        # Directory - find all relevant files
+        files = []
+        for ext in ['.py', '.js', '.java']:
+            files.extend(Path(target).rglob(f'*{ext}'))
+    
+    self._add_swe_step(task_id, 'Generating test cases', 'generating')
+    
+    all_tests = []
+    for file_path in files[:10]:  # Limit to 10 files
+        with open(file_path, 'r') as f:
+            code = f.read()
+        
+        # Generate tests using SWE agent
+        tests = self.swe_agent._generate_test_file(
+            str(file_path),
+            code,
+            self.swe_agent.language_extensions.get(Path(file_path).suffix, 'python')
+        )
+        
+        if tests:
+            all_tests.append(tests)
+    
+    self._add_swe_step(task_id, 'Writing test files', 'writing')
+    
+    # Write test files
+    for test in all_tests:
+        test_path = Path(test['path'])
+        test_path.parent.mkdir(parents=True, exist_ok=True)
+        test_path.write_text(test['content'])
+    
+    self._add_swe_step(task_id, 'Running tests', 'testing')
+    
+    # Try to run tests
+    test_results = self._run_tests(test_framework)
+    
+    self._add_swe_step(task_id, 'Test generation completed', 'completed')
+    
+    return {
+        'tests_generated': len(all_tests),
+        'test_files': [t['path'] for t in all_tests],
+        'test_results': test_results
+    }
+
+def _handle_bug_fix(self, task_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle bug fixing task"""
+    file_path = parameters.get('file_path')
+    error_message = parameters.get('error_message', '')
+    
+    self._add_swe_step(task_id, 'Analyzing bug', 'analyzing')
+    
+    # Read buggy code
+    with open(file_path, 'r') as f:
+        buggy_code = f.read()
+    
+    # Determine language
+    ext = Path(file_path).suffix
+    language = self.swe_agent.language_extensions.get(ext, 'python')
+    
+    self._add_swe_step(task_id, 'Identifying root cause', 'identifying')
+    
+    # Analyze bug
+    bug_analysis = self._analyze_bug(buggy_code, error_message, language)
+    
+    self._add_swe_step(task_id, 'Generating fix', 'fixing')
+    
+    # Generate fix
+    prompt = f"""
+    Fix this bug in {language} code:
+    
+    Error: {error_message}
+    
+    Code:
+    ```{language}
+    {buggy_code}
+    ```
+    
+    Bug analysis: {bug_analysis}
+    
+    Provide the complete fixed code.
+    """
+    
+    fixed_code = self.openai_client.complete(prompt, max_tokens=4000)
+    
+    # Clean response
+    fixed_code = fixed_code.replace(f'```{language}', '').replace('```', '').strip()
+    
+    self._add_swe_step(task_id, 'Validating fix', 'validating')
+    
+    # Validate fix
+    validation = self._validate_code
+```

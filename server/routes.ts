@@ -346,5 +346,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced SWE Agent endpoints
+  app.post('/api/swe/analyze', async (req, res) => {
+    try {
+      const { issueDescription, codeContext } = req.body;
+      
+      if (!issueDescription) {
+        return res.status(400).json({ error: 'Issue description is required' });
+      }
+
+      const analysis = await aiService.analyzeSoftwareIssue(issueDescription, codeContext);
+      res.json({ success: true, analysis });
+    } catch (error: any) {
+      console.error('SWE analysis error:', error);
+      res.status(500).json({ error: error.message || 'Analysis failed' });
+    }
+  });
+
+  app.post('/api/swe/implement', async (req, res) => {
+    try {
+      const { plan, codeContext } = req.body;
+      
+      if (!plan) {
+        return res.status(400).json({ error: 'Solution plan is required' });
+      }
+
+      const implementation = await aiService.implementSolution(plan, codeContext);
+      res.json({ success: true, implementation });
+    } catch (error: any) {
+      console.error('SWE implementation error:', error);
+      res.status(500).json({ error: error.message || 'Implementation failed' });
+    }
+  });
+
+  app.post('/api/swe/validate', async (req, res) => {
+    try {
+      const { originalIssue, plan, codeChanges } = req.body;
+      
+      if (!originalIssue || !plan || !codeChanges) {
+        return res.status(400).json({ error: 'All parameters are required for validation' });
+      }
+
+      const validation = await aiService.validateSolution(originalIssue, plan, codeChanges);
+      res.json({ success: true, validation });
+    } catch (error: any) {
+      console.error('SWE validation error:', error);
+      res.status(500).json({ error: error.message || 'Validation failed' });
+    }
+  });
+
   return httpServer;
 }
