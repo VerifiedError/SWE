@@ -175,20 +175,21 @@ export default function Dashboard() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar activeTasks={stats?.activeTasks || 0} />
       
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 ml-0 lg:ml-0">
+          <div className="flex items-center justify-between ml-12 lg:ml-0">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage your AI coding tasks and workflows</p>
+              <h1 className="text-xl lg:text-2xl font-semibold text-gray-900">Dashboard</h1>
+              <p className="text-xs lg:text-sm text-gray-500 mt-1">Manage your AI coding tasks and workflows</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 lg:space-x-4">
               <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <i className="fas fa-plus mr-2"></i>
-                    New Task
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs lg:text-sm px-2 lg:px-4">
+                    <i className="fas fa-plus mr-1 lg:mr-2"></i>
+                    <span className="hidden sm:inline">New Task</span>
+                    <span className="sm:hidden">New</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -244,23 +245,23 @@ export default function Dashboard() {
         </header>
 
         {/* Dashboard Content */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex-1 overflow-auto p-4 lg:p-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
             {/* Left Column: Stats & Tasks */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="xl:col-span-2 space-y-4 lg:space-y-6">
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 lg:p-6">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                          <i className="fas fa-tasks text-white text-sm"></i>
+                        <div className="w-6 h-6 lg:w-8 lg:h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-tasks text-white text-xs lg:text-sm"></i>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">Active Tasks</p>
-                        <p className="text-2xl font-semibold text-gray-900">
+                      <div className="ml-3 lg:ml-4">
+                        <p className="text-xs lg:text-sm font-medium text-gray-500">Active Tasks</p>
+                        <p className="text-xl lg:text-2xl font-semibold text-gray-900">
                           {statsLoading ? '...' : stats?.activeTasks || 0}
                         </p>
                       </div>
@@ -269,16 +270,16 @@ export default function Dashboard() {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 lg:p-6">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                          <i className="fas fa-check text-white text-sm"></i>
+                        <div className="w-6 h-6 lg:w-8 lg:h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-check text-white text-xs lg:text-sm"></i>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">Completed</p>
-                        <p className="text-2xl font-semibold text-gray-900">
+                      <div className="ml-3 lg:ml-4">
+                        <p className="text-xs lg:text-sm font-medium text-gray-500">Completed</p>
+                        <p className="text-xl lg:text-2xl font-semibold text-gray-900">
                           {statsLoading ? '...' : stats?.completed || 0}
                         </p>
                       </div>
@@ -286,17 +287,17 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
+                <Card className="sm:col-span-2 lg:col-span-1">
+                  <CardContent className="p-4 lg:p-6">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
-                          <i className="fas fa-code-branch text-white text-sm"></i>
+                        <div className="w-6 h-6 lg:w-8 lg:h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-code-branch text-white text-xs lg:text-sm"></i>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">Open PRs</p>
-                        <p className="text-2xl font-semibold text-gray-900">
+                      <div className="ml-3 lg:ml-4">
+                        <p className="text-xs lg:text-sm font-medium text-gray-500">Open PRs</p>
+                        <p className="text-xl lg:text-2xl font-semibold text-gray-900">
                           {statsLoading ? '...' : stats?.openPRs || 0}
                         </p>
                       </div>

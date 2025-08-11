@@ -76,10 +76,10 @@ export function ChatInterface({ taskId, messages, onSendMessage, activeAgent }: 
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-3 lg:p-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Human-in-the-Loop Chat</CardTitle>
-          <div className="flex items-center space-x-2">
+          <CardTitle className="text-sm lg:text-lg font-semibold">AI Chat</CardTitle>
+          <div className="flex items-center space-x-1 lg:space-x-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <span className="text-xs text-gray-500">
               {isConnected ? 'Connected' : 'Disconnected'}
