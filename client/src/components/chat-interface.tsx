@@ -147,7 +147,7 @@ export function ChatInterface({ taskId, messages, onSendMessage, activeAgent }: 
           <div className="flex space-x-2">
             <Input
               type="text"
-              placeholder="Type your message..."
+              placeholder={!taskId ? "Select a task above to enable chat..." : "Type your message..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -157,6 +157,7 @@ export function ChatInterface({ taskId, messages, onSendMessage, activeAgent }: 
             <Button
               onClick={handleSend}
               disabled={!inputValue.trim() || !taskId}
+              title={!taskId ? "Select a task first to enable chat" : ""}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <i className="fas fa-paper-plane"></i>
