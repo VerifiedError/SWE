@@ -121,8 +121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const repositories = await storage.getRepositoriesByUser(req.params.userId);
       res.json(repositories);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Internal server error' });
     }
   });
 
